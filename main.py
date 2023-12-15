@@ -90,7 +90,7 @@ def baidu_search(qry_words, number):
     return results
 
 
-def get_cut_pic(window_pic):
+def get_cut_pic(window_pic, pic_tool):
     # 将截图转换为 NumPy 数组
     arr = np.asarray(window_pic)
     # 将 NumPy 数组转换为 PIL Image 对象
@@ -112,6 +112,7 @@ def get_cut_pic(window_pic):
     # cap_pic = pic_tool.capture_pic(window_pic)
     isShowCut = False
     cap_pic = pic_tool.get_capture_pic_from_boxes(results[0], isShowCut)
+    return cap_pic
 
 
 if __name__ == "__main__":
@@ -143,6 +144,8 @@ if __name__ == "__main__":
 
                 # 获取到截图
                 cap_pic = get_cut_pic(window_pic, pic_tool)
+                if not cap_pic:
+                    continue
 
                 # 2. 再调用切图，及展示
                 qry_words = ocr_tool.do_ocr(cap_pic)
