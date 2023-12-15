@@ -1,5 +1,7 @@
 import re
 import os
+
+import numpy as np
 from PIL import Image
 import logging
 import time
@@ -7,6 +9,10 @@ from baidusearch.baidusearch import search
 from OCRTool import OCRTool
 from pic_tool import PicTool
 import argparse
+from ultralytics import YOLO
+import cv2
+
+
 
 # 设置日志级别为ERROR
 logging.getLogger('ppocr').setLevel(logging.ERROR)
@@ -84,46 +90,71 @@ def baidu_search(qry_words, number):
     return results
 
 
+def get_cut_pic(window_pic):
+    # 将截图转换为 NumPy 数组
+    arr = np.asarray(window_pic)
+    # 将 NumPy 数组转换为 PIL Image 对象
+    image = Image.fromarray(arr)
+    # image.show()
+
+    # predict
+    # image = cv2.imread("./pic/ed_16.jpg")
+    results = model.predict(source=image, save=False, save_txt=False, save_crop=False)
+    if len(results) == 0:
+        print("no result")
+        return None
+
+    # print(results[0].boxes.conf)
+    if len(results[0].boxes.conf) == 0 or results[0].boxes.conf < 0.4:
+        # print("result not fit,", results[0].boxes.conf)
+        return None
+
+    # cap_pic = pic_tool.capture_pic(window_pic)
+    isShowCut = False
+    cap_pic = pic_tool.get_capture_pic_from_boxes(results[0], isShowCut)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--test_mode', type=bool)
-    parser.add_argument('--question_type', type=str)
-    parser.add_argument('--pc_belong', type=str)
+    parser.add_argument('--test_mode', type=int)
+    parser.add_argument('--screen_rate', type=float) # 1.25 or 2.5
     args = parser.parse_args()
-
     test_mode = args.test_mode
-    question_type = args.question_type
-    pc_belong = args.pc_belong
-    if not test_mode or not question_type or not pc_belong:
+    screen_rate = args.screen_rate
+    if not screen_rate:
         print("param error.", args)
         exit(-1)
 
-    rate = 2.5 if pc_belong == "w" else 1.25
-    location = (0, 395, 517, 510)
-    if pc_belong == "w":
-        # 下面location是要切图的位置，就是问题的区域
-        if question_type == "free_day":
-            location = (0, 600, 1035, 800)
-
-    if test_mode:
+    rate = screen_rate
+    if test_mode == 1:
         get_pic_ocr_from_local()
     else:
         # 1. 获得图片，截图，取得问题
-        pic_tool = PicTool('微信读书', rate, location)
+        pic_tool = PicTool('微信读书', rate)
         ocr_tool = OCRTool()
+
+        model = YOLO('./model/question.pt', )  # 预训练的 YOLOv8n 模型
 
         last_query = ""
         while True:
-            window_pic = pic_tool.get_cut_window()
-            cap_pic = pic_tool.capture_pic(window_pic)
+            try:
+                # get wx window img
+                window_pic = pic_tool.get_cut_window()
 
-            # 2. 再调用切图，及展示
-            qry_words = ocr_tool.do_ocr(cap_pic)
+                # 获取到截图
+                cap_pic = get_cut_pic(window_pic, pic_tool)
 
-            if last_query == qry_words:
-                print(f"same qry:{qry_words} donothing.")
-                continue
+                # 2. 再调用切图，及展示
+                qry_words = ocr_tool.do_ocr(cap_pic)
 
-            # 进行查询, 并展示结果
-            word_query(qry_words)
-            last_query = qry_words
+                if last_query == qry_words:
+                    print(f"same qry:{qry_words} donothing.")
+                    continue
+
+                # 进行查询, 并展示结果
+                word_query(qry_words)
+                last_query = qry_words
+
+                time.sleep(0.1)
+            except Exception as e :
+                print(e)

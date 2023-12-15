@@ -1,16 +1,17 @@
 import time
 import win32gui
-from PIL import ImageGrab, ImageChops
+from PIL import ImageGrab, ImageChops, Image
 
 
 class PicTool:
-    def __init__(self, window_name, rate, location):
+    def __init__(self, window_name, rate):
         self.hwnd = win32gui.FindWindow(0, f"{window_name}")
         if self.hwnd == 0:
             raise Exception(f"没有找到'{window_name}'的窗口")
-        self.bound = win32gui.GetWindowRect(self.hwnd)
+        bound = win32gui.GetWindowRect(self.hwnd)
+        # 使用 map() 函数
+        self.bound = map(lambda x: x * 2.5, bound)
         self.rate = rate
-        self.location = location
 
     def is_same_pic(self, imgA, imgB):
         if imgA is None or imgB is None:
@@ -25,9 +26,19 @@ class PicTool:
         cut_pic = ImageGrab.grab(self.bound)
         return cut_pic
 
-    def capture_pic(self, img):
-        return img.crop(self.location)
+    def capture_pic(self, img, location):
+        return img.crop(location)
 
+    def get_capture_pic_from_boxes(self, result, isShow):
+        im = result.orig_img
+        xyxy = result.boxes.xyxy
+        BGR = True
+        crop = im[int(xyxy[0, 1]):int(xyxy[0, 3]), int(xyxy[0, 0]):int(xyxy[0, 2]), ::(1 if BGR else -1)]
+        img = Image.fromarray(crop[..., ::-1])
+        if isShow:
+            img.show()
+
+        return img
 
 if __name__ == "__main__":
     rate = 1.25  # 这个是放大或者缩小的比例，因为展示的时候，显示器可能放大了
