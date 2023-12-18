@@ -41,7 +41,7 @@ def show_result(results, qry_words):
 
 
 # 截图跟查询
-def word_query(qry_words):
+def query_and_show(qry_words):
     print(f"Q:  {qry_words}")
     regex = r"第(\d+)题"
     match = re.search(regex, qry_words)
@@ -81,7 +81,7 @@ def get_pic_ocr_from_local():
                 continue
 
             # 切图跟查询
-            word_query(qry_words)
+            query_and_show(qry_words)
             last_query = qry_words
 
 
@@ -122,6 +122,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     test_mode = args.test_mode
     screen_rate = args.screen_rate
+    # 这里的rate, 表示的是屏幕的放大, 不同显示不一样，可以截图试一下
     if not screen_rate:
         print("param error.", args)
         exit(-1)
@@ -155,7 +156,7 @@ if __name__ == "__main__":
                     continue
 
                 # 进行查询, 并展示结果
-                word_query(qry_words)
+                query_and_show(qry_words)
                 last_query = qry_words
 
                 time.sleep(0.1)
