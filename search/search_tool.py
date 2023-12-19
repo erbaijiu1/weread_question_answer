@@ -102,7 +102,7 @@ class SearchTool:
         ret_context = ""
         for one_context in results:
             if each_max_len and len(one_context['snippet']) > each_max_len:
-                ret_context += one_context['snippet'][:len(one_context['snippet'])] + ";\n"
+                ret_context += one_context['snippet'][:each_max_len] + ";\n"
             else:
                 ret_context += one_context['snippet'] + ";\n"
 

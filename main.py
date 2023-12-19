@@ -7,7 +7,6 @@ import numpy as np
 from PIL import Image
 import logging
 import time
-from baidusearch.baidusearch import search
 
 from LLM.geminiTool import GeminiTool
 from OCRTool import OCRTool
@@ -58,7 +57,7 @@ def show_result(results, qry_words):
 
 # 截图跟查询
 def query_and_show(qry_words, options):
-    print(f"Q:  {qry_words}")
+    print(f"Q:  {qry_words}\n {options}")
     regex = r"第(\d+)题"
     match = re.search(regex, qry_words)
     if not qry_words or match:
@@ -68,7 +67,7 @@ def query_and_show(qry_words, options):
     # 搜索引擎的补充信息
     try:
         search = SearchTool()
-        add_info = search.get_content_only(qry_words, 50)
+        add_info = search.get_content_only(qry_words, 100)
         logger.debug(add_info)
     except Exception as e:
         logger.error(e)
@@ -79,11 +78,15 @@ def query_and_show(qry_words, options):
     if add_info:
         llm_req += "相关搜索资料：" + add_info
 
-    llm_req += "\n回答选项答案即可。"
-
-    llm = GeminiTool()
-    response = llm.get_response(llm_req)
-    print(f"\033[31m{response}\033[0m")
+    # llm_req += "\n如果资料不相关就忽略，回答:选项+答案即可。"
+    llm_req += "\n回答:选项+答案即可。"
+    try:
+        llm = GeminiTool()
+        response = llm.get_response(llm_req)
+        print(f"\033[31m{response}\033[0m")
+        logger.debug(response)
+    except Exception as e:
+        logger.error(e)
 
     # 展示结果
     # show_result(results, qry_words)
@@ -157,7 +160,8 @@ def get_cut_pic(pic_tool, results, label, min_conf):
     # return que_cap_pic, answer_cap_pic
 
 
-logger = get_pro_logger(logging.DEBUG)
+# logger = get_pro_logger(logging.DEBUG)
+logger = get_pro_logger(logging.INFO)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -181,10 +185,12 @@ if __name__ == "__main__":
         model = YOLO('./model/que_answer.pt', )  # 预训练的模型
 
         last_query = ""
+        qry_pic = None
+        logger.info("ready? go...")
         while True:
-            time.sleep(0.5)
+            time.sleep(0.2)
             try:
-                # logger.debug("new job.")
+                logger.debug("new job.")
                 # get wx window img
                 window_pic = pic_tool.get_window_img()
 
@@ -200,24 +206,31 @@ if __name__ == "__main__":
                 if len(results) == 0:
                     logger.debug("no result")
                     continue
+                logger.debug("get result")
 
                 # 获取到问题的截图
                 que_cap_pic = get_cut_pic(pic_tool, results, 'que', 0.3)
                 if not que_cap_pic:
                     continue
+                if pic_tool.is_same_pic(qry_pic, que_cap_pic):
+                    logger.debug("same pic.")
+                    continue
+                qry_pic = que_cap_pic
+                logger.debug("get question pic.")
 
                 # 2. 再调用切图，及展示
                 qry_words = ocr_tool.do_ocr(que_cap_pic)
-                logger.debug("Q：" + qry_words)
+                logger.debug(f"Q：{qry_words}  {last_query} ")
                 if last_query == qry_words:
                     logger.debug(f"same qry:{qry_words} ")
                     continue
 
                 answer_cap_pic = get_cut_pic(pic_tool, results, 'answer', 0.3)
+                logger.debug("get answer pic.")
                 options = ""
                 if answer_cap_pic:
                     options = ocr_tool.do_ocr(answer_cap_pic, "选项", ";  ")
-                    logger.debug("A: " + options)
+                    logger.debug(options)
 
                 # 进行查询, 并展示结果
                 query_and_show(qry_words, options)
