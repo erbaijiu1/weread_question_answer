@@ -10,7 +10,7 @@ from fake_useragent import UserAgent
 
 
 class SearchTool:
-    def __init__(self, search_type=None):
+    def __init__(self, search_type=None, count=3):
         if not search_type:
             self.search_type = "bing"
         else:
@@ -19,6 +19,7 @@ class SearchTool:
         self.user_agent = UserAgent()
         self.google_api_key = os.getenv('GOOGLE_SEARCH_API_KEY')
         self.google_cx = os.getenv('GOOGLE_SEARCH_CX')
+        self.count = count
 
 
     def baidu_search(self, question):
@@ -42,12 +43,9 @@ class SearchTool:
         # endpoint = os.environ['BING_SEARCH_V7_ENDPOINT'] + "/bing/v7.0/search"
         endpoint = "https://api.bing.microsoft.com/v7.0/search"
 
-        # # Query term(s) to search for.
-        # query = "强弩之末，力_穿鲁编。"
-
         # Construct a request
         mkt = 'en-US'
-        params = {'q': question, 'mkt': mkt}
+        params = {'q': question, 'mkt': mkt, 'count':self.count }
         headers = {'Ocp-Apim-Subscription-Key': subscription_key}
 
         # Call the API
@@ -99,11 +97,14 @@ class SearchTool:
             # return None
         return results
 
-    def do_search_only_content(self, question):
+    def get_content_only(self, question, each_max_len=None):
         results = self.do_search(question)
         ret_context = ""
         for one_context in results:
-            ret_context += one_context['snippet'] + ";"
+            if each_max_len and len(one_context['snippet']) > each_max_len:
+                ret_context += one_context['snippet'][:len(one_context['snippet'])] + ";\n"
+            else:
+                ret_context += one_context['snippet'] + ";\n"
 
         return ret_context
 
@@ -113,5 +114,5 @@ if __name__ == "__main__":
     st = SearchTool("bing")
     st = SearchTool("google")
     # additional materials
-    result = st.do_search_only_content("强弩之末，力_穿鲁编。")
+    result = st.get_content_only("强弩之末，力_穿鲁编。")
     print(result)

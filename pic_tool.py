@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import time
 import win32gui
 from PIL import ImageGrab, ImageChops, Image
@@ -9,8 +10,9 @@ class PicTool:
         if self.hwnd == 0:
             raise Exception(f"没有找到'{window_name}'的窗口")
         bound = win32gui.GetWindowRect(self.hwnd)
+        self.bound = [num * rate for num in bound]
         # 使用 map() 函数
-        self.bound = map(lambda x: x * 2.5, bound)
+        # self.bound = map(lambda x: x * 2.5, bound)
         self.rate = rate
 
     def is_same_pic(self, imgA, imgB):
@@ -22,18 +24,17 @@ class PicTool:
         return True
 
     # 截图
-    def get_cut_window(self):
+    def get_window_img(self):
         cut_pic = ImageGrab.grab(self.bound)
         return cut_pic
 
     def capture_pic(self, img, location):
         return img.crop(location)
 
-    def get_capture_pic_from_boxes(self, result, isShow):
-        im = result.orig_img
-        xyxy = result.boxes.xyxy
+    def get_capture_pic_by_location(self, orig_img, isShow, xyxy):
         BGR = True
-        crop = im[int(xyxy[0, 1]):int(xyxy[0, 3]), int(xyxy[0, 0]):int(xyxy[0, 2]), ::(1 if BGR else -1)]
+        # crop = orig_img[int(xyxy[0, 1]):int(xyxy[0, 3]), int(xyxy[0, 0]):int(xyxy[0, 2]), ::(1 if BGR else -1)]
+        crop = orig_img[xyxy[0]:xyxy[1], xyxy[2]:xyxy[3], ::(1 if BGR else -1)]
         img = Image.fromarray(crop[..., ::-1])
         if isShow:
             img.show()
@@ -51,7 +52,7 @@ if __name__ == "__main__":
     print("src:bound:", pic_tool.bound)
     tmpImg = None
     for i in range(0, 200):
-        img = pic_tool.get_cut_window()
+        img = pic_tool.get_window_img()
         if not pic_tool.is_same_pic(tmpImg, img):
             img_name = f'./weread_pic/{file_pre}_{i}.jpg'
             img.save(img_name)
